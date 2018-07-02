@@ -1,0 +1,86 @@
+---
+- hosts: all
+  remote_user: cloud
+  become: True
+  gather_facts: False
+  vars_prompt:
+    - name: "repo_url"
+      prompt: "Please enter repo URL which you want to add like http://ftp5.gwdg.de/pub/opensuse/repositories/Cloud:/Tools/SLE_12_SP3/Cloud%3ATools.repo"
+  tasks:
+    - debug: var=repo_url
+
+    - zypper_repository:
+        name: Cloud_Tools
+        repo: "{{ repo_url }}"
+        state: present
+      register: out_repo
+      ignore_errors: yes
+
+    - zypper_repository:
+        repo: '*'
+        runrefresh: yes
+    - zypper: name=cloud-init state=present
+      register: var_cloudinit
+
+
+    - name: Exit from playbook if repo not attached successfully
+      debug: msg="Please attached correct repo"
+      when: ( out_repo.rc != 0 or var_cloudinit != 0 )
+      tags:
+        - tag1
+
+############################################################################################3
+#  vars_prompt:
+#    - name: "package_url"
+#      prompt: "Please enter URL for download ixgbevf : "
+
+#  tasks:
+#  - block:
+#    - name: Download package
+#      get_url:
+#        url: "{{ package_url }}"
+#        dest: /usr/local/bin
+#        mode: 0755
+#    rescue:
+#    - name: Exit from playbook
+#      debug: msg="URL is not correct"
+#    tags: tag17
+#  - name: Getting tar ball name
+#    shell: ls -tr /usr/local/bin | grep tgz
+#    register: tar_var
+#  - name: Unarchive the tar ball
+#    unarchive:
+#      src: /usr/local/bin/'{{ tar_var }}'
+#      dest: /usr/local/bin/
+#  - name: Getting name of destination
+#    shell: ls -tr  /usr/local/bin/ | basename | gep tgz
+#  - name: Compile the packages
+#    make:
+#     chdir: /usr/local/bin/
+
+#######################################################################333
+    - name: Restart and enable cloud-init service
+      systemd:
+        name: "{{ item }}"
+        state: started
+#      when: var_cloudinit.rc == 0
+      with_items:
+         - cloud-init-local.service
+         - cloud-init.service
+         - cloud-config.service
+         - cloud-final.service
+      ignore_errors: yes
+      tags: tag17
+
+    - name: Enable cloud-init-local.service services
+      systemd:
+        name: "{{ item }}"
+        enabled: yes
+#      when: var_cloudinit.rc == 0
+      with_items:
+         - cloud-init-local.service
+         - cloud-init.service
+         - cloud-config.service
+         - cloud-final.service
+      ignore_errors: yes
+      tags: tag18
