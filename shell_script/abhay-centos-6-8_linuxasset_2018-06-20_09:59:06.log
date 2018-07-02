@@ -1,0 +1,22 @@
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+cat: /etc/os-release: No such file or directory
+cat: /etc/os-release: No such file or directory
+-bash: line 9: hostnamectl: command not found
+cat: /etc/os-release: No such file or directory
+usage: uptime [-V]
+    -V    display version
+-bash: line 27: chronyc: command not found
+-bash: line 28: unexpected EOF while looking for matching ``'
+-bash: line 29: syntax error: unexpected end of file
+RES 1
+ProcNumberoflogicalprocpercore 1
+ComputeManufacturer Xen
+ComputeModel HVM domU
+SMBIOSSBIOSVersion 4.1.2_115-908.792.
+BiosManufacturer Xen
+ServerSerialnumber 167d1a54-f102-45ea-885a-810fa35cfd92
+ServerDateTime 20/06/2018 09:59:38
+ServerDateTimeUTC 20/06/2018 09:59:38
+ServerLastrebootDateTime 20-06-2018 07:46
+ServerUptime
+ServerNTPSourceName

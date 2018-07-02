@@ -1,0 +1,25 @@
+HOSTNAME;abhay-ansible-centos
+DNSNAME;abhay-ansible-centos.novalocal
+OSmanufacturer;"centos"
+OSDescription;"CentOS Linux"
+OSarchitecture;x86_64
+OStype
+OSversion;"7 (Core)"
+OSKernelVersion;3.10.0-862.3.2.el7.x86_64
+ProcManufacturer;GenuineIntel
+ProcName;Intel(R) Xeon(R) CPU E5-2658 v4 @ 2.30GHz
+ProcNumberTotalofSOCKET;1
+ProcNumberofCORESperSocket;2
+ProcNumberTotalofCORES;2
+ProcNumberoflogicalprocpercore;1
+ComputeManufacturer;Xen
+ComputeModel;HVM domU
+SMBIOSSBIOSVersion;4.1.2_115-908.792.
+BiosManufacturer;Xen
+ServerSerialnumber;23de4152-8d95-4f6e-ba92-4e69c7539493
+ServerDateTime;20/06/2018 09:31:43
+ServerDateTimeUTC;20/06/2018 09:31:43
+ServerLastrebootDateTime;20-06-2018 09:15
+ServerUptime;16 minutes
+ServerNTPSourceName;195-154-105-147.rev.poneytelecom.eu
+DateLastScriptExecution; 20/06/2018 09:31:29

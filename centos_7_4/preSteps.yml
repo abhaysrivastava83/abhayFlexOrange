@@ -1,0 +1,22 @@
+---
+- hosts: localhost
+#  vars:
+#    image_name: centos_abhay_test5 
+#    instance_name: abhay5_test_play
+  tasks:
+  - name: Downloading centos qcow2
+    get_url: url=https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1711.qcow2 dest=/opt/abhay/project/centos_7_4/images
+
+  - name: Exporting variables
+    shell: source /opt/abhay/project/centos_7_4/script.sh 
+  
+  - name: Creating cloud image from qcow2
+    command: /bin/openstack --insecure  image create {{ image_name }} --disk-format qcow2  --private  --min-disk 40 --file /opt/abhay/project/centos_7_4/images/CentOS-7-x86_64-GenericCloud-1711.qcow2
+ 
+  - name: Sleeping for 15 mins
+    shell: sleep 900
+  
+  - name: Creating instance from image
+    shell: /bin/openstack --insecure server create --flavor t2.micro --image {{ image_name }} \
+             --key-name KeyPair-1c48_abhay_prod --nic net-id=1fd7a904-2367-4a43-ae49-1351588387d6 \
+             --security-group default {{ instance_name }}

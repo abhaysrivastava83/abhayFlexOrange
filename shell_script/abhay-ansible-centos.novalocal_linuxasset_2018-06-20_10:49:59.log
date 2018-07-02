@@ -1,0 +1,28 @@
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Last failed login: Wed Jun 20 10:49:09 UTC 2018 from 182.100.67.237 on ssh:notty
+There were 6 failed login attempts since the last successful login.
+HOSTNAME abhay-ansible-centos
+DNSNAME abhay-ansible-centos.novalocal
+OSmanufacturer "centos"
+OSDescription "CentOS Linux"
+OSarchitecture x86_64
+OStype
+OSversion "7 (Core)"
+OSKernelVersion 3.10.0-862.3.2.el7.x86_64
+ProcManufacturer GenuineIntel
+ProcName Intel(R) Xeon(R) CPU E5-2658 v4 @ 2.30GHz
+ProcNumberTotalofSOCKET 1
+ProcNumberofCORESperSocket 2
+ProcNumberTotalofCORES 2
+ProcNumberoflogicalprocpercore 1
+ComputeManufacturer Xen
+ComputeModel HVM domU
+SMBIOSSBIOSVersion 4.1.2_115-908.792.
+BiosManufacturer Xen
+ServerSerialnumber 23de4152-8d95-4f6e-ba92-4e69c7539493
+ServerDateTime 20/06/2018 10:50:02
+ServerDateTimeUTC 20/06/2018 10:50:02
+ServerLastrebootDateTime 20-06-2018 09:15
+ServerUptime 1 hour 34 minutes
+ServerNTPSourceName pinwheel.spiderspace.co.uk
+DateLastScriptExecution 20/06/2018 10:50:02

@@ -1,0 +1,116 @@
+---
+- hosts: all
+  remote_user: debian
+  become: True
+  tasks:
+
+#  - name: Updating new updates
+#    apt: 
+#      name: "*" 
+#      state: latest
+
+#  - name: Install cloud-init
+#    apt: name=cloud-init state=present
+
+  - name: Configuration of /etc/ssh/sshd_config
+    replace:
+      path: /etc/ssh/sshd_config
+      regexp: '^PasswordAuthentication yes'
+      replace: 'PasswordAuthentication no'
+      backup: yes
+    ignore_errors: yes
+
+  - name: Start cloud-init-local.service services
+    systemd:
+      name: "{{ item }}"
+      state: started
+    with_items:
+      - cloud-init-local.service
+      - cloud-init.service
+      - cloud-config.service
+      - cloud-final.service
+    ignore_errors: yes
+
+  - name: Enable cloud-init-local.service services
+    systemd:
+      name: "{{ item }}"
+      enabled: yes
+    with_items:
+      - cloud-init-local.service
+      - cloud-init.service
+      - cloud-config.service
+      - cloud-final.service
+    ignore_errors: yes
+
+  - name: Check bootcmd entry exists or not
+    shell: grep -A4  "bootcmd:" /etc/cloud/cloud.cfg
+    register: result
+    ignore_errors: yes
+  - debug: var=result.failed
+
+  - name: Copy ec2metada
+    copy: src=./ec2metadata dest=/usr/bin/ec2metadata
+
+  - name: bootcmd entry in /etc/cloud/cloud.cfg
+    blockinfile:
+      path: /etc/cloud/cloud.cfg
+      marker: ""
+      block: |
+        bootcmd:
+          - localipv4=$(ec2metadata --local-ipv4)
+          - localhostname=$(ec2metadata --local-hostname | awk -F"."  '{print $1}')
+          - sed -i -e "s/%LOCALIPV4%/$localipv4/g" /etc/hosts
+          - sed -i -e "s/%LOCALHOSTNAME%/$localhostname/g" /etc/hosts
+        runcmd:
+        - userdel -r debian
+    when: result.failed
+    ignore_errors: yes
+
+  - name: disable_root entry in /etc/cloud/cloud.cfg
+    lineinfile: dest=/etc/cloud/cloud.cfg insertafter='^ - default' line='disable_root{{ ":" }} 1'
+    ignore_errors: yes
+
+  - name: Stop network manager
+    shell: service NetworkManager stop
+
+  - name: checvkconfig network manager off
+    shell: chkconfig NetworkManager off
+
+  - name: Clear history
+    shell: echo "">/root/.bash_history
+    ignore_errors: yes
+
+  - name: Check cloud service
+    shell: cloud-init init --local
+    register: cloud_status
+    ignore_errors: yes
+  - debug: var=cloud_status
+
+  - name: Clear cloud0 init record
+    shell: rm -rf /var/lib/cloud/*
+    when: cloud_status.rc == 0
+    ignore_errors: yes
+
+  - name: Clear auth files and logs for root
+    shell: echo "">/root/.ssh/authorized_keys
+    when: cloud_status.rc == 0
+    ignore_errors: yes
+
+  - name: Clear auth files and logs for non root
+    shell: echo "">/home/cloud/.ssh/authorized_keys
+    when: cloud_status.rc == 0
+    ignore_errors: yes
+
+  - name: Clear /var/log/*
+    shell: rm -rf /var/log/*
+    when: cloud_status.rc == 0
+    ignore_errors: yes
+
+  - name: Clear history
+    shell: history -w;echo > /root/.bash_history;history-c;history -c;history -c
+    when: cloud_status.rc == 0
+    ignore_errors: yes
+
+  - name: Prining error message
+    debug: msg="Please check cloud-init service, it seems not running"
+    when: cloud_status.rc != 0

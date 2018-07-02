@@ -1,0 +1,14 @@
+---
+- hosts: all
+  remote_user: cloud
+  become: True
+  tasks:
+  - name: Check perm
+    stat: path=/etc/crontab
+    register: st
+  - debug: msg=pass
+    when: st.stat.mode=="0600"
+  - debug: msg="my test pass"    
+    when: st.stat.mode=="0700"
+    skippy: yes 
+    selective: yes

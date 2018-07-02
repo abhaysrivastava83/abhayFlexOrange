@@ -1,0 +1,21 @@
+---
+- hosts: localhost
+  remote_user: cloud
+  become: yes
+
+  tasks:
+    - name: Exporting the enviorment variables for openstack
+      shell: source /opt/abhay/project/SLES_12_SP1/script.sh
+      delegate_to: localhost
+
+    - name: Shutdown the instance
+#      os_server_action: action=stop server={{ server }} timeout=200 verify=no
+      command: /bin/openstack  --insecure server stop "{{ server }}"
+      ignore_errors: Yes
+
+    - name: Sleeping 60 seconds
+      shell: sleep 60
+      ignore_errors: Yes
+
+    - name: Create image from Instance
+      shell: /bin/openstack --insecure server image create --name "{{ snapshot_image }}"  "{{ server }}"

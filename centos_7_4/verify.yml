@@ -1,0 +1,6 @@
+---
+- hosts: all
+  remote_user: cloud
+  tasks:
+  - name: Verify of configuration
+    command: uptime

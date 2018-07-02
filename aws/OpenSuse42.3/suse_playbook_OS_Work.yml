@@ -1,0 +1,135 @@
+---
+- hosts: all 
+  remote_user: cloud
+  become: True
+  tasks:      
+    - name: Checking uptime of user
+      shell: 'uptime'
+      register: var_uptime
+    - debug: var=var_uptime.stdout
+
+    - name: Insert data in /etc/sysconfig/network/dhcp
+      shell: cat /etc/sysconfig/network/dhcp
+      register: file_check
+      when: var_uptime.rc == 0 
+
+    - name: Do this task if DHCLIENT_PRIMARY_DEVICE present in file
+      lineinfile: path=/etc/sysconfig/network/dhcp regexp='^DHCLIENT_PRIMARY_DEVICE=(.*)' line='DHCLIENT_PRIMARY_DEVICE="yes"' 
+      when: file_check.stdout.find('DHCLIENT_PRIMARY_DEVICE') != -1
+      when: var_uptime.rc == 0
+
+    - name: Do this task if DHCLIENT_USE_LAST_LEASE present in file
+      lineinfile: path=/etc/sysconfig/network/dhcp regexp='^DHCLIENT_USE_LAST_LEASE=(.*)' line='DHCLIENT_USE_LAST_LEASE="no"' 
+      when: (file_check.stdout.find('DHCLIENT_USE_LAST_LEASE') != -1 and file_check.stdout.find('DHCLIENT_PRIMARY_DEVICE') != -1 and  var_uptime.rc == 0)
+      
+
+    - name: Do this task if DHCLIENT_USE_LAST_LEASE not present in file    
+      lineinfile: dest=/etc/sysconfig/network/dhcp line='DHCLIENT_USE_LAST_LEASE="no"'
+      when: (file_check.stdout.find('DHCLIENT_USE_LAST_LEASE') == -1 and file_check.stdout.find('DHCLIENT_PRIMARY_DEVICE') != -1 and  var_uptime.rc == 0)
+
+######  "Check if Initrd file contains persistent routes: lsinitrd /boot/initrd-2.6.32.12-0.7-default |grep persistent|grep net if so refer pdf"
+#  Need to work on above section
+    - name: Register value of  /etc/ssh/sshd_config
+      shell: grep -v ^# /etc/ssh/sshd_config | grep ^'PasswordAuthentication yes'
+      register: var1
+      ignore_errors: yes
+      
+    - name: grep ^#PasswordAuthentication in /etc/ssh/sshd_config      
+      shell: grep ^#PasswordAuthentication /etc/ssh/sshd_config
+      register: var2
+      ignore_errors: yes
+      
+    - name: grep ^PasswordAuthentication in /etc/ssh/sshd_config      
+      shell: grep ^PasswordAuthentication /etc/ssh/sshd_config
+      register: var3
+      ignore_errors: yes
+    
+    - name: Change in /etc/ssh/sshd_config for PasswordAuthentication from yes to no
+      lineinfile: dest=/etc/ssh/sshd_config regexp='PasswordAuthentication yes' line='PasswordAuthentication no' 
+      when: var1.rc == 0
+      ignore_errors: yes
+    
+    - name: Change in /etc/ssh/sshd_config from PasswordAuthentication to PasswordAuthentication no
+      lineinfile: dest=/etc/ssh/sshd_config insertafter='^#PasswordAuthentication' line='PasswordAuthentication no' 
+      when: var2.rc == 0
+      ignore_errors: yes
+   
+    - name: Change in /etc/ssh/sshd_config from ^#PasswordAuthentication to PasswordAuthentication no
+      lineinfile: dest=/etc/ssh/sshd_config insertafter='^#PasswordAuthentication' line='PasswordAuthentication no' 
+      when: var3.rc != 0
+      ignore_errors: yes
+    
+    - name: Change in /etc/ssh/sshd_config from ^#ChallengeResponseAuthentication to ChallengeResponseAuthentication=no
+      lineinfile: dest=/etc/ssh/sshd_config insertafter='^#ChallengeResponseAuthentication' line='ChallengeResponseAuthentication=no' 
+      ignore_errors: yes
+    
+    - name: cat /etc/ssh/sshd_config | grep '^UsePAM'
+      shell: cat /etc/ssh/sshd_config | grep '^UsePAM'
+      register: var5
+   
+    - name: Change in /etc/ssh/sshd_config from UsePAM to UsePAM=yes 
+      lineinfile: dest=/etc/ssh/sshd_config regexp='^UsePAM\s+' line='UsePAM=yes' 
+      when: var5.rc != 0
+      ignore_errors: yes
+   
+    - name: grep ^disable_root /etc/cloud/cloud.cfg
+      shell: grep ^disable_root /etc/cloud/cloud.cfg
+      register: var4
+      ignore_errors: yes
+    
+    - name: Change in /etc/cloud/cloud.cfg adding disable_root  True
+      lineinfile: dest=/etc/cloud/cloud.cfg line='disable_root{{ ":" }} True'
+      when: var4.rc != 0
+      ignore_errors: yes
+
+    - name:  Clear history
+      shell: echo "">/root/.bash_history
+      ignore_errors: yes
+
+    - name: Run history -c
+      shell: history -c
+      ignore_errors: yes
+
+    - name: Deleting /var/lib/cloud directory
+      shell: rm -rf /var/lib/cloud/*
+      ignore_errors: yes
+
+    - name: Clear auth files and logs for root
+      shell: echo "">/root/.ssh/authorized_keys
+      ignore_errors: yes
+
+    - name: Clear auth files and logs for non root
+      shell: echo "">/home/cloud/.ssh/authorized_keys
+      ignore_errors: yes
+
+    - name: Clear /var/log/*
+      shell: rm -rf /var/log/*
+      ignore_errors: yes
+
+    - name: Clear history
+      shell: history -w;echo > /root/.bash_history;history-c;history -c;history -c
+      ignore_errors: yes
+
+    - name: Reboot remote system"
+      shell: sleep 2 && /sbin/shutdown -r now "Ansible system package upgraded"
+      async: 1
+      poll: 0
+    - set_fact: wait_host="{{ ansible_host }}"
+    - name: Waiting  for server to come back
+      local_action: wait_for host={{wait_host}} delay=10 port=22 state=started
+      become: false
+
+    - name: Truncate /root/.ssh/known_hosts
+      shell: 'echo "" > /root/.ssh/known_hosts'
+      delegate_to: localhost
+      ignore_errors: yes
+
+    - name: Truncate /home/cloud/.ssh/known_hosts
+      shell: 'echo "" > /home/cloud/.ssh/known_hosts'
+      delegate_to: localhost
+      ignore_errors: yes
+
+    - name: Checking server uptime
+      command: uptime
+      register: var_uptime
+    - debug: var=var_uptime.stdout     

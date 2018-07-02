@@ -1,0 +1,75 @@
+---
+- hosts: all
+  remote_user: ec2-user
+  become: yes
+  
+  tasks:
+    - name: Make changes in /etc/cloud/cloud.cfg file
+      replace: dest=/etc/cloud/cloud.cfg regexp=(\s)name:(\s+.*) replace=' name{{ ":" }} cloud' after='default_user'
+      ignore_errors: Yes
+    
+    - name: Adding adm group
+      group: name=adm state=present
+      ignore_errors: Yes
+    
+    - name: Adding syslog user
+      user: name=syslog group=adm shell=/bin/sh
+      ignore_errors: Yes
+    
+    - name:  Clean /var/log/cloud-init*
+      shell: rm -rf /var/log/cloud-init*
+      ignore_errors: Yes
+    
+    - name: Clean /var/lib/cloud/*
+      shell: rm -rf /var/lib/cloud/*
+      ignore_errors: Yes
+    
+    - name: /var/log/network-config.log
+      shell: rm -rf /var/log/network-config.log
+      ignore_errors: Yes
+
+    - name: Restart and enable cloud-init service 
+      systemd:
+        name: "{{ item }}"
+        state: started
+      when: var_cloudinit.rc == 0        
+      with_items:
+        - cloud-init-local.service
+        - cloud-init.service
+        - cloud-config.service
+        - cloud-final.service
+      ignore_errors: yes
+
+    - name: Enable cloud-init-local.service services
+      systemd:
+        name: "{{ item }}"
+        enabled: yes
+      when: var_cloudinit.rc == 0        
+      with_items:
+        - cloud-init-local.service
+        - cloud-init.service
+        - cloud-config.service
+        - cloud-final.service
+      ignore_errors: yes
+
+
+    - name: Reboot remote system"
+      shell: sleep 2 && /sbin/shutdown -r now "Ansible system package upgraded"
+      async: 1
+      poll: 0
+    - set_fact: wait_host="{{ ansible_host }}"
+    - name: Waiting  for server to come back
+      local_action: wait_for host={{wait_host}} delay=10 port=22 state=started
+      become: false
+
+    - name: Truncate /root/.ssh/known_hosts
+      shell: 'echo "" > /root/.ssh/known_hosts'
+      delegate_to: localhost
+      ignore_errors: yes
+
+
+    - name: Truncate /home/cloud/.ssh/known_hosts
+      shell: 'echo "" > /home/cloud/.ssh/known_hosts'
+      delegate_to: localhost
+      ignore_errors: yes
+    

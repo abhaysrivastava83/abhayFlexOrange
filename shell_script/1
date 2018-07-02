@@ -1,0 +1,27 @@
+#!/bin/bash
+#  i am not sure its running or not
+lastrebootTime=`who -b`
+echo "HOSTNAME" `hostname -s`
+echo "DNSNAME" `hostname -f`
+echo "OSmanufacturer" `cat /etc/os-release | grep -w ID  | awk -F "=" '{print $2}'`
+echo "OSDescription"  `cat /etc/os-release | grep -w NAME | awk -F "=" '{print $2}'`
+echo "OSarchitecture" `uname -i`
+echo "OStype" `hostnamectl | grep -w 'Operating System' | awk -F "=" '{print $2}'`
+echo "OSversion" `cat /etc/os-release | grep -w VERSION | awk -F "=" '{print $2}'`
+echo "OSKernelVersion" `uname -r`
+echo "ProcManufacturer" `lscpu | grep 'Vendor ID' | awk -F ":" '{print $2}'`
+echo "ProcName" `lscpu | grep 'Model name' | awk -F ":" '{print $2}'`
+echo "ProcNumberTotalofSOCKET" `lscpu | grep Socket | awk -F ":" '{print $2}'`
+echo "ProcNumberofCORESperSocket" `lscpu | grep Core | awk -F ":" '{print $2}'`
+echo "ProcNumberTotalofCORES" `lscpu | grep -w '^CPU(s):' | awk -F ":" '{print $2}'`
+echo "ProcNumberoflogicalprocpercore" `lscpu | grep Thread | awk -F ":" '{print $2}'`
+echo "ComputeManufacturer" `dmidecode -s system-manufacturer`
+echo "ComputeModel" `dmidecode -s system-product-name`
+echo "SMBIOSSBIOSVersion" `dmidecode -s bios-version`
+echo "BiosManufacturer" `dmidecode -s bios-vendor`
+echo "ServerSerialnumber" `dmidecode -s system-serial-number`
+echo "ServerDateTime" `date "+%d/%m/%Y %T"`
+echo "ServerDateTimeUTC"  `date -u "+%d/%m/%Y %T"`
+echo "ServerLastrebootDateTime" `echo $lastrebootTime | awk '{print $3}' |  awk -F "-" '{print substr($3,1,3),substr($2,1,3),substr($1,1,4)}' |  sed 's/ /-/g'  && echo $lastrebootTime |  awk '{print $4}'`
+echo "ServerUptime" `uptime -p | cut -c 4-| tr '\n' ' ' |  tr ',' ' '`
+echo "ServerNTPSourceName" `chronyc tracking | head -1 | awk -F ":" '{print $2}' | awk '{print $2}' | sed 's/.//;s/.$//;'`

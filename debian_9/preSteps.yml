@@ -1,0 +1,23 @@
+---
+- hosts: localhost
+  vars:
+    image_name: OBS_U_debian_9_0 
+    instance_name: sanjeev_debian_9_0
+  tasks:
+#  - name: Downloading centos qcow2
+#    get_url: url=https://cdimage.debian.org/cdimage/openstack/archive/9.0.0-20170617/debian-9.0.0-openstack-amd64.qcow2 dest=/opt/abhay/project/debian_9/images
+
+
+  - name: Exporting variables
+    shell: source /root/scriptPreprod.sh 
+
+#  - name: Creating cloud image from qcow2
+#    command: /bin/openstack --insecure  image create {{ image_name }} --disk-format qcow2  --private  --min-disk 40 --file /opt/abhay/project/debian_9/images/debian-9.0.0-openstack-amd64.qcow2
+
+#  - name: Sleeping 20 mins
+#    shell: sleep 1000
+  
+  - name: Creating instance from image
+    shell: /bin/openstack --insecure server create --flavor t2.micro --image {{ image_name }} \
+             --key-name KeyPair-f6e9 --nic net-id=1fd7a904-2367-4a43-ae49-1351588387d6 \
+             --security-group default {{ instance_name }}

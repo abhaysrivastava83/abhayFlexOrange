@@ -1,0 +1,287 @@
+---
+- hosts: all
+  remote_user: cloud
+  become: True
+  tasks:
+  - name: Check value of PASS_MIN_DAYS 
+    shell: grep  "PASS_MIN_DAYS" /etc/login.defs | grep -v ^# | awk '{print $2}'
+    register: check_pass
+    ignore_errors: yes
+
+  
+  - name: Check value of  PASS_MAX_DAYS 
+    shell: grep "PASS_MAX_DAYS" /etc/login.defs | grep -v ^# | awk '{print $2}'
+    register: check_pass_days
+    ignore_errors: yes
+
+  - name: Check X11Forwarding value 
+    shell: cat /etc/ssh/sshd_config|grep -iE "X11Forwarding" | grep -v ^# | awk '{print $2}'
+    register: x11Forwarding
+    ignore_errors: yes
+
+  - name: Check PermitRootLogin 
+    shell: cat /etc/ssh/sshd_config|grep -iE "PermitRootLogin" | grep -v ^# | awk '{print $2}'
+    register: PermitRootLogin
+    ignore_errors: yes
+
+  - name: Check UMASK 
+    shell: umask
+    register: UMASK
+    ignore_errors: yes
+
+  - name: Check entry of limits.conf  
+    shell: cat /etc/security/limits.conf|grep -iE "core" | grep -v ^#
+    register: limits
+    ignore_errors: yes
+
+  - name: Check perm of /etc/crontab
+    stat: path=/etc/crontab
+    register: st
+    ignore_errors: yes
+
+  - name: Check  Ciphers and keying value 
+    shell: sshd -T | grep -i Ciphers
+    register: result
+    ignore_errors: yes
+
+  - name: Check ClientAliveCountMax in sshd_config 
+    shell: cat /etc/ssh/sshd_config|grep -iE "ClientAliveCountMax" | grep -v ^# | awk '{print $2}'
+    register: ClientAliveCountMax
+    ignore_errors: yes
+
+  - name: Check ClientAliveInterval  in sshd_config  
+    shell: cat /etc/ssh/sshd_config|grep -iE "ClientAliveInterval" | grep -v ^# | awk '{print $2}'
+    register: ClientAliveInterval
+    ignore_errors: yes
+
+  - name: Check PermitUserEnvironment  in sshd_config
+    shell: cat /etc/ssh/sshd_config|grep -iE "PermitUserEnvironment" | grep -v ^# | awk '{print $2}'
+    register: PermitUserEnvironment
+    ignore_errors: yes
+
+  - name: Check INACTIVE value in /etc/default/useradd 
+    shell: cat  /etc/default/useradd|grep -iE "INACTIVE" | grep -v ^# | awk -F "=" '{print $2}'
+    register: INACTIVE
+    ignore_errors: yes
+
+  - name: Check perm of /etc/cron.allow 
+    stat: path=/etc/cron.allow
+    register: cronallow
+    ignore_errors: yes
+
+  - name: Check perm of /etc/cron.deny 
+    stat: path=/etc/cron.deny
+    register: crondeny
+    ignore_errors: yes
+
+  - name: Check perm of /etc/cron.d    
+    stat: path=/etc/cron.d
+    register: crond
+    ignore_errors: yes
+
+  - name: Check perm of /etc/cron.daily
+    stat: path=/etc/cron.daily
+    register: dcron
+    ignore_errors: yes
+
+  - name: Check perm of /etc/cron.hourly    
+    stat: path=/etc/cron.hourly
+    register: hcron
+    ignore_errors: yes
+
+  - name: Check perm of /etc/cron.weekly 
+    stat: path=/etc/cron.weekly
+    register: wcron
+    ignore_errors: yes
+
+  - name: Check perm of /etc/cron.monthly 
+    stat: path=/etc/cron.monthly
+    register: mcron
+    ignore_errors: yes
+
+  - name: Check SELINUX  parameter 
+    shell: cat /etc/selinux/config | grep -w 'SELINUX' | grep -v ^# | awk -F "=" '{print $2}'
+    register: selinux_v
+    ignore_errors: yes
+
+  - name: Check SELINUXTYPE 
+    shell: cat /etc/selinux/config | grep -w 'SELINUXTYPE' | grep -v ^# | awk -F "=" '{print $2}'
+    register: selinuxtype
+    ignore_errors: yes
+
+  - name: Check ssh protocal
+    shell: cat /etc/ssh/sshd_config | grep Protocol | grep -v ^# | awk '{print $2}'
+    register: ssh_p
+    ignore_errors: yes
+     
+  - name: Checked in /etc/group file "cloud" user is already part of wheel group
+    shell: cat /etc/group|grep -iE "wheel" | grep "cloud"
+    ignore_errors: yes
+    register: userpresence
+
+
+  - debug: msg="#######################STARTING QUALYS VALIDATION#######################"
+
+  - debug: msg="PASS_MIN_DAYS is CORRECT"
+    when: check_pass.stdout=="7"
+
+  - debug: msg="PASS_MIN_DAYS is NOT CORRECT"
+    when: check_pass.stdout!="7"
+
+  - debug: msg="PASS_MAX_DAYS is correct"
+    when: check_pass_days.stdout=="90"
+
+  - debug: msg="PASS_MAX_DAYS is NOT CORRECT"
+    when: check_pass_days.stdout!="90"
+
+  - debug: msg="X11Forwarding value is CORRECT"
+    when: x11Forwarding.stdout=="no"
+
+  - debug: msg="X11Forwarding value is NOT CORRECT"
+    when: x11Forwarding.stdout!="no"
+
+  - debug: msg="PermitRootLogin value is CORRECT"
+    when: PermitRootLogin.stdout=="no"
+  
+  - debug: msg="PermitRootLogin value is NOT CORRECT"
+    when: PermitRootLogin.stdout!="no"
+
+  - debug: msg="UMASK value is CORRECT"
+    when: UMASK.stdout=="0077"
+
+  - debug: msg="limits.conf  entry is CORRECT"
+    when: limits.rc== 0
+  
+  - debug: msg="limits.conf  entry is NOT CORRECT"
+    when: limits.rc!= 0
+
+  - debug: msg="/etc/crontab permission  and ownership is CORRECT"
+    when: 
+      - st.stat.mode=="0600"
+      - st.stat.gr_name=="root"
+      - st.stat.pw_name=="root"
+
+
+  - debug: msg="/etc/crontab  permission or  ownership is NOT CORRECT"
+    when: (st.stat.mode!="0600") or (st.stat.gr_name!="root") or (st.stat.pw_name!="root")
+
+  - debug: msg="Ciphers and keying value is CORRECT"
+    when: result.rc== 0
+
+  - debug: msg="Ciphers and keying value is NOT CORRECT"
+    when: result.rc!= 0
+
+  - debug: msg="ClientAliveCountMax in  sshd_config value is  CORRECT"
+    when: ClientAliveCountMax.stdout=="0"
+
+  - debug: msg="ClientAliveCountMax in sshd_config value is NOT CORRECT"
+    when: ClientAliveCountMax.stdout!="0"
+
+  - debug: msg="ClientAliveInterval in sshd_config value is CORRECT"    
+    when: ClientAliveInterval.stdout=="300"
+
+  - debug: msg="ClientAliveInterval in sshd_config value is NOT CORRECT"
+    when: ClientAliveInterval.stdout!="300"
+
+  - debug: msg="PermitUserEnvironment in sshd_config value is CORRECT"    
+    when: PermitUserEnvironment.stdout=="no"
+
+  - debug: msg="PermitUserEnvironment in sshd_config value is NOT CORRECT"
+    when: PermitUserEnvironment.stdout!="no"
+
+  - debug: msg="INACTIVE value in /etc/default/useradd is CORRECT"
+    when: INACTIVE.stdout=="35"
+
+  - debug: msg="INACTIVE value in /etc/default/useradd is NOT CORRECT"    
+    when: INACTIVE.stdout!="35"
+
+  - debug: msg="Permission and ownership of /etc/cron.allow is CORRECT"
+    when:
+      - cronallow.stat.mode=="0600"
+      - cronallow.stat.gr_name=="root"
+      - cronallow.stat.pw_name=="root"
+
+  - debug: msg="Permission and ownership of /etc/cron.allow is NOT CORRECT"
+    when: (cronallow.stat.mode!="0600") or (cronallow.stat.gr_name!="root") or (cronallow.stat.pw_name!="root")
+
+  - debug: msg="Permission and ownership of /etc/cron.deny is CORRECT"
+    when:
+      - crondeny.stat.mode=="0600"
+      - crondeny.stat.gr_name=="root"
+      - crondeny.stat.pw_name=="root"
+
+  - debug: msg="Permission and ownership of /etc/cron.deny is NOT CORRECT"
+    when: (crondeny.stat.mode!="0600") or (crondeny.stat.gr_name!="root") or (crondeny.stat.pw_name!="root")
+
+  - debug: msg="Permission and ownership of /etc/cron.d is CORRECT"
+    when:
+      - crond.stat.mode=="0700"
+      - crond.stat.gr_name=="root"
+      - crond.stat.pw_name=="root"
+
+  - debug: msg="Permission and ownership of /etc/cron.d is NOT CORRECT"
+    when: (crond.stat.mode!="0700") or (crond.stat.gr_name!="root") or (crond.stat.pw_name!="root")
+
+  - debug: msg="Permission and ownership of  /etc/cron.daily is CORRECT"
+    when:
+      - dcron.stat.mode=="0700"
+      - dcron.stat.gr_name=="root"
+      - dcron.stat.pw_name=="root"
+
+  - debug: msg="Permission and ownership of  /etc/cron.daily is NOT CORRECT"
+    when: (dcron.stat.mode!="0700") or (dcron.stat.gr_name!="root") or (dcron.stat.pw_name!="root")
+
+  - debug: msg="Permission and ownership of  /etc/cron.hourly is CORRECT"
+    when:
+      - hcron.stat.mode=="0700"
+      - hcron.stat.gr_name=="root"
+      - hcron.stat.pw_name=="root"
+
+  - debug: msg="Permission and ownership of   /etc/cron.hourly is NOT CORRECT"
+    when: (hcron.stat.mode!="0700") or (hcron.stat.gr_name!="root") or (hcron.stat.pw_name!="root")
+
+  - debug: msg="Permission and ownership of /etc/cron.weekly is CORRECT"
+    when:
+      - wcron.stat.mode=="0700"
+      - wcron.stat.gr_name=="root"
+      - wcron.stat.pw_name=="root"
+
+  - debug: msg="Permission and ownership of /etc/cron.weekly is NOT CORRECT"
+    when: (wcron.stat.mode!="0700") or (wcron.stat.gr_name!="root") or (wcron.stat.pw_name!="root")
+
+  - debug: msg="Permission and ownership of /etc/cron.monthly is CORRECT"
+    when:
+      - mcron.stat.mode=="0700"
+      - mcron.stat.gr_name=="root"
+      - mcron.stat.pw_name=="root"
+
+  - debug: msg="Permission and ownership of /etc/cron.monthly is NOT CORRECT"
+    when: (mcron.stat.mode!="0700") or (mcron.stat.gr_name!="root") or (mcron.stat.pw_name!="root")
+
+  - debug: msg="Value of SELINUX is CORRECT"
+    when: selinux_v.stdout=="enforcing"
+
+  - debug: msg="Value of SELINUX is NOT CORRECT this should be enforcing"
+    when: selinux_v.stdout!="enforcing"
+
+  - debug: msg="Value of SELINUXTYPE is CORRECT"
+    when: selinuxtype.stdout=="targeted"
+
+  - debug: msg="Value of SELINUXTYPE is NOT CORRECT this should be targeted"
+    when: selinuxtype.stdout!="targeted"
+
+  - debug: msg="ssh protocal parameter is CORRECT"
+    when: ssh_p.stdout=="2"
+
+  - debug: msg="ssh protocal parameter is NOT CORRECT this should be 2"
+    when: ssh_p.stdout!="2"
+
+  - debug: msg="SUCCESS Cloud user is part of wheel, value is CORRECT"
+    when: userpresence.rc == 0
+
+  - debug: msg="FAILED Cloud user is not part of wheel, value is NOT CORRECT"
+    when: userpresence.rc != 0
+
+    
+#  - debug: msg="PASSED
+#    when: (check_pass.stdout=="7") and (check_pass_days.stdout=="90") and (x11Forwarding.stdout=="yes")
