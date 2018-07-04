@@ -18,4 +18,4 @@
       ignore_errors: Yes
 
     - name: Create image from Instance
-      shell: /bin/openstack --insecure server image create --name "{{ snapshot_image }}"  "{{ server }}"
+      shell: /bin/openstack image create "{{image_name}}"  --disk-format vhd --min-disk 40 --min-ram 1024 --volume "{{volume_name}}" --unprotected --property __os_type=Linux --property __platform=Linux --property __os_version="CentOS linux 7.4" --force
