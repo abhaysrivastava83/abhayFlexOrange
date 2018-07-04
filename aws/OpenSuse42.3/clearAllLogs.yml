@@ -8,6 +8,10 @@
   - name:  Clear history
     shell: echo "">/root/.bash_history
     ignore_errors: yes
+  
+  - name:  Clear history
+    shell: echo "">/home/cloud/.bash_history
+    ignore_errors: yes
 
   - name: Run history -c
     shell: history -c
