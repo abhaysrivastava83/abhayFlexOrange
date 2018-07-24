@@ -2,6 +2,9 @@
 - hosts: localhost
   tasks:
 
+  - name: Sleeping for 10 mins
+    shell: sleep 900
+
   - name: Creating EIP
     shell: openstack floating ip create 0a2228f2-7f8a-45f1-8e09-9039e1d09975
     register: var_EIP
@@ -12,6 +15,16 @@
   - name: Getting fixed EIP
     shell: openstack server show {{ instance_name }}
     register: var_fixip
+
+  - name: Getting local IP
+    shell: openstack server show {{ instance_name }} -f json | jq .'addresses' | awk -F "=" '{print $2}' | sed -e 's/"//' | awk -F"," '{print $1}'
+    register: var_localIP
+
+  - name: Truncate host entry
+    copy: dest=/opt/abhay/project/centos_7_4/hosts content="" force=yes
   
   - name: Doing entry on host file
-    lineinfile: path=/opt/abhay/project/centos_7_4/hosts line='{{ var_fixip.stdout_lines[15].split('|')[2].split('=')[1].split(',')[0] }} ansible_ssh_private_key_file=/root/abhay/abhay_keys/KeyPair-1c48_abhay_prod.pem'
+    lineinfile: path=/opt/abhay/project/centos_7_4/hosts line='{{ var_localIP.stdout_lines | to_yaml | replace('\n', '') | replace('[', '') | replace(']', '') }} ansible_ssh_private_key_file=/root/abhay/abhay_keys/KeyPair-1c48_abhay_prod.pem'
+  
+#  - name: Doing entry on host file
+#    lineinfile: path=/opt/abhay/project/centos_7_4/hosts line='{{ var_fixip.stdout_lines[15].split('|')[2].split('=')[1].split(',')[0] }} ansible_ssh_private_key_file=/root/abhay/abhay_keys/KeyPair-1c48_abhay_prod.pem'
