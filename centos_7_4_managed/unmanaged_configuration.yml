@@ -1,0 +1,174 @@
+---
+- hosts: all
+  remote_user: cloud
+  become: True
+  tasks:
+  - name: Insert data in /etc/sysconfig/network-scripts/ifcfg-eth0 for NM_CONTROLLED
+    shell: cat /etc/sysconfig/network-scripts/ifcfg-eth0
+    register: status
+  - debug: var=status.stdout.find('NM_CONTROLLED')
+    ignore_errors: yes
+ 
+  - name: Changing value of NM_CONTROLLED
+    when: status.stdout.find('NM_CONTROLLED') != -1
+    lineinfile: path=/etc/sysconfig/network-scripts/ifcfg-eth0 regexp='^NM_CONTROLLED=' line='NM_CONTROLLED=yes' backup=yes
+  
+  - name: Inserting line for NM_CONTROLLED
+    when: status.stdout.find('NM_CONTROLLED') == -1
+    lineinfile: dest=/etc/sysconfig/network-scripts/ifcfg-eth0 line="NM_CONTROLLED=yes"
+    ignore_errors: yes
+
+  - name: Insert data in /etc/sysconfig/network-scripts/ifcfg-eth0 for PERSISTENT_DHCLIENT
+    shell: cat /etc/sysconfig/network-scripts/ifcfg-eth0
+    register: status
+  - debug: var=status.stdout.find('PERSISTENT_DHCLIENT')
+    ignore_errors: yes
+  
+  - name: Changing value of PERSISTENT_DHCLIENT
+    when: status.stdout.find('PERSISTENT_DHCLIENT') != -1
+    lineinfile: path=/etc/sysconfig/network-scripts/ifcfg-eth0 regexp='^PERSISTENT_DHCLIENT=' line='PERSISTENT_DHCLIENT=1' backup=yes
+    ignore_errors: yes
+
+  - name: Inserting line for PERSISTENT_DHCLIENT
+    when: status.stdout.find('PERSISTENT_DHCLIENT') == -1
+    lineinfile: dest=/etc/sysconfig/network-scripts/ifcfg-eth0 line="PERSISTENT_DHCLIENT=1"
+    ignore_errors: yes
+
+  - name: Install epelrelease-6-8.noarch.rpm
+    yum: name=https://dl.fedoraproject.org/pub/epel/7/x86_64/Packages/e/epel-release-7-11.noarch.rpm state=present
+    ignore_errors: yes
+
+  - name: Install cloud-init
+    yum: name=cloud-init state=present
+    ignore_errors: yes
+
+  - name: Configuration of /etc/ssh/sshd_config
+    replace:
+      path: /etc/ssh/sshd_config
+      regexp: '^PasswordAuthentication yes'
+      replace: 'PasswordAuthentication no'
+      backup: yes
+    ignore_errors: yes
+
+
+#- hosts: all
+#  remote_user: cloud
+#  become: True
+#  tasks:
+#  - name: Download https://sourceforge.net/projects/e1000/files/ixgbevf%20stable/2.16.4/ixgbevf-2.16.4.tar.gz/download
+#    get_url: url=https://sourceforge.net/projects/e1000/files/ixgbevf%20stable/2.16.4/ixgbevf-2.16.4.tar.gz/download dest=/usr/src/ force=yes
+#  - name: Extract ixgbevf-2.16.4.tar.gz
+#    unarchive: src=ixgbevf-2.16.4.tar.gz dest=/usr/src/
+#    chdir: /usr/src
+#  - name: Compiling package
+#    make: chdir=/usr/src/ixgbevf-2.16.4/src
+#  - name: Installing packages
+#    make: chdir=/usr/src/ixgbevf-2.16.4/src target=install
+#    tags: tag5
+#
+  - name: Start cloud-init-local.service services
+    systemd:
+      name: "{{ item }}"
+      state: started
+    with_items:
+      - cloud-init-local.service
+      - cloud-init.service
+      - cloud-config.service
+      - cloud-final.service
+    ignore_errors: yes
+
+  - name: Enable cloud-init-local.service services
+    systemd:
+      name: "{{ item }}"
+      enabled: yes
+    with_items:
+      - cloud-init-local.service
+      - cloud-init.service
+      - cloud-config.service
+      - cloud-final.service
+    ignore_errors: yes
+
+  - name: Check bootcmd entry exists or not
+    shell: grep -A4  "bootcmd:" /etc/cloud/cloud.cfg
+    register: result
+    ignore_errors: yes
+  - debug: var=result.failed
+
+  - name: Copy ec2metada
+    copy: src=./ec2metadata dest=/usr/bin/ec2metadata
+
+  - name: bootcmd entry in /etc/cloud/cloud.cfg
+    blockinfile:
+      path: /etc/cloud/cloud.cfg
+      marker: ""
+      block: |
+        bootcmd:
+          - localipv4=$(ec2metadata --local-ipv4)
+          - localhostname=$(ec2metadata --local-hostname | awk -F"."  '{print $1}')
+          - sed -i -e "s/%LOCALIPV4%/$localipv4/g" /etc/hosts
+          - sed -i -e "s/%LOCALHOSTNAME%/$localhostname/g" /etc/hosts
+        runcmd:
+        - userdel -r centos
+    when: result.failed
+    ignore_errors: yes
+
+  - name: disable_root entry in /etc/cloud/cloud.cfg
+    lineinfile: dest=/etc/cloud/cloud.cfg insertafter='^ - default' line='disable_root{{ ":" }} 1'
+    ignore_errors: yes
+
+  - name: Clear history
+    shell: echo "">/root/.bash_history
+    ignore_errors: yes
+
+  - name: Check cloud service
+    shell: cloud-init init --local
+    register: cloud_status
+    ignore_errors: yes
+  - debug: var=cloud_status
+
+  - name: Clear cloud0 init record
+    shell: rm -rf /var/lib/cloud/*
+    when: cloud_status.rc == 0
+    ignore_errors: yes
+
+  - name: Clear auth files and logs for root
+    shell: echo "">/root/.ssh/authorized_keys
+    when: cloud_status.rc == 0
+    ignore_errors: yes
+
+  - name: Clear auth files and logs for non root
+    shell: echo "">/home/cloud/.ssh/authorized_keys
+    when: cloud_status.rc == 0
+    ignore_errors: yes
+
+  - name: Clear /var/log/*
+    shell: rm -rf /var/log/*
+    when: cloud_status.rc == 0
+    ignore_errors: yes
+
+  - name: Clear history
+    shell: history -w;echo > /root/.bash_history;history-c;history -c;history -c
+    when: cloud_status.rc == 0
+    ignore_errors: yes
+
+  - name: Prining error message
+    debug: msg="Please check cloud-init service, it seems not running"
+    when: cloud_status.rc != 0
+
+  - name: Doing blank on hosts file
+    shell: echo"">/opt/abhay/project/centos_7_4_managed/hosts
+    delegate_to: localhost
+
+  - name: Delete all blank lines in hosts file
+    shell: sed -i '/^$/d' /opt/abhay/project/centos_7_4_managed/hosts
+    delegate_to: localhost
+
+  - name: listing /opt/abhay/project/centos_7_4_managed/images folder
+    shell: ls -1 /opt/abhay/project/centos_7_4_managed/images
+    register: contents
+    delegate_to: localhost
+
+  - name: Empting images folder 
+    file: path=/opt/abhay/project/centos_7_4_managed/images{{ item }} state=absent
+    with_items:  "{{ contents.stdout_lines }}"
+    delegate_to: localhost

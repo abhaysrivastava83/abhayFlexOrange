@@ -27,20 +27,20 @@
     register: var_localIP
 
   - name: Truncate host entry
-    copy: dest=/opt/abhay/project/centos_7_4/hosts content="" force=yes
+    copy: dest=/opt/abhay/project/centos_7_4_managed/hosts content="" force=yes
 
   - name: Doing entry for EIP in a file
-    lineinfile: path=/opt/abhay/project/centos_7_4/eip1.entry line='{{ var_fixip.stdout_lines[15].split('|')[2].split('=')[1].split(',')[1] }}'
+    lineinfile: path=/opt/abhay/project/centos_7_4_managed/eip1.entry line='{{ var_fixip.stdout_lines[15].split('|')[2].split('=')[1].split(',')[1] }}'
 
   - name: Doing entry on host file
-    lineinfile: path=/opt/abhay/project/centos_7_4/hosts line='{{ var_localIP.stdout_lines | to_yaml | replace('\n', '') | replace('[', '') | replace(']', '') }} ansible_ssh_private_key_file=/opt/abhay/project/centos_7_4/mykey-{{ instance_name }}.pem'
+    lineinfile: path=/opt/abhay/project/centos_7_4_managed/hosts line='{{ var_localIP.stdout_lines | to_yaml | replace('\n', '') | replace('[', '') | replace(']', '') }} ansible_ssh_private_key_file=/opt/abhay/project/centos_7_4_managed/mykey-{{ instance_name }}.pem'
   
 
   - name: Doing entry for EIP in a file
-    lineinfile: path=/opt/abhay/project/centos_7_4/eip1.entry line='{{ var_fixip.stdout_lines[15].split('|')[2].split('=')[1].split(',')[1] }}'
+    lineinfile: path=/opt/abhay/project/centos_7_4_managed/eip1.entry line='{{ var_fixip.stdout_lines[15].split('|')[2].split('=')[1].split(',')[1] }}'
 
   - name: Proper editing of file
     shell: sed -e 's/^[ \t]*//'  eip1.entry>eip.entry
 
   - name: Purging eip entry
-    copy: dest=/opt/abhay/project/centos_7_4/eip1.entry content="" force=yes
+    copy: dest=/opt/abhay/project/centos_7_4_managed/eip1.entry content="" force=yes
