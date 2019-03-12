@@ -1,0 +1,49 @@
+---
+- hosts: localhost
+  vars_files:
+     - /opt/abhay/project/{{ instance_name }}/var_stuff.yml
+
+  tasks:
+
+  - name: Checking availibility of EIP
+    shell: openstack floating ip list | wc -l
+    register: f_eip_av
+
+  - name: Creating EIP
+    shell: openstack floating ip create 0a2228f2-7f8a-45f1-8e09-9039e1d09975
+    register: var_EIP
+    when: f_eip_av.stdout|int <=11
+
+  - name: Assign EIP to server
+    shell: openstack server add floating ip {{ instance_name }} {{ var_EIP.stdout_lines[6].split('|')[2] }}
+
+  - name: Sleeping for 1 mins
+    shell: sleep 60
+
+  - name: Getting fixed EIP
+    shell: openstack server show {{ instance_name }}
+    register: var_fixip
+
+  - name: Getting local IP
+    shell: openstack server show {{ instance_name }} -f json | jq .'addresses' | awk -F "=" '{print $2}' | sed -e 's/"//' | awk -F"," '{print $1}'
+    register: var_localIP
+
+  - name: Truncate host entry
+    copy: dest=/opt/abhay/project/{{ instance_name }}/hosts content="" force=yes
+    ignore_errors: true
+
+  - name: Doing entry for EIP in a file
+    lineinfile: path=/opt/abhay/project/{{ instance_name }}/eip1.entry state=present line='{{ var_fixip.stdout_lines[15].split('|')[2].split('=')[1].split(',')[1] }}'
+
+  - name: Doing entry on host file
+    lineinfile: path=/opt/abhay/project/{{ instance_name }}/hosts state=present line='{{ var_localIP.stdout_lines | to_yaml | replace('\n', '') | replace('[', '') | replace(']', '') }} ansible_ssh_private_key_file=/opt/abhay/project/{{ instance_name }}/mykey-{{ instance_name }}.pem'
+
+  - name: Doing entry for EIP in a file
+    lineinfile: path=/opt/abhay/project/{{ instance_name }}/eip1.entry line='{{ var_fixip.stdout_lines[15].split('|')[2].split('=')[1].split(',')[1] }}'
+
+  - name: Proper editing of file
+    shell: sed -e 's/^[ \t]*//'  /opt/abhay/project/{{ instance_name }}/eip1.entry>/opt/abhay/project/{{ instance_name }}/eip.entry
+
+  - name: Purging eip entry
+    copy: dest=/opt/abhay/project/{{ instance_name }}/eip1.entry content="" force=yes
+

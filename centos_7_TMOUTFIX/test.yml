@@ -1,0 +1,15 @@
+---
+- hosts: localhost
+  tasks:
+   - name: bootcmd entry in /etc/cloud/cloud.cfg
+     blockinfile:
+       path: /tmp/cloud.cfg
+       marker: ""
+       block: |
+          bootcmd:
+            - localipv4=$(ec2metadata --local-ipv4 | awk '{print $2}')
+            - localhostname=$(ec2metadata --local-hostname | awk '{print $2}' |awk -F"."  '{print $1}')
+            - sed -i -e "s/%LOCALIPV4%/$localipv4/g" /etc/hosts
+            - sed -i -e "s/%LOCALHOSTNAME%/$localhostname/g" /etc/hosts
+          runcmd:
+          - userdel -r centos

@@ -1,0 +1,43 @@
+---
+- hosts: localhost
+  remote_user: root
+  tasks:
+  - name: Make configuration in /etc/sysconfig/network-scripts/ifcfg-eth0
+    lineinfile: path=/opt/abhay/project/new_features/ifcfg-eth0 regexp='^BOOTPROTO=' line='BOOTPROTO=dhcp' backup=no
+
+  - name: Make configuration in /etc/sysconfig/network-scripts/ifcfg-eth0
+    lineinfile: path=/opt/abhay/project/new_features/ifcfg-eth0 regexp='^ONBOOT=' line='ONBOOT=yes' backup=no
+
+  - name: Add  group "adm"
+    group:
+      name: adm
+      state: present
+
+  - name: Add the user 'syslog' with a bash shell, appending the group 'adm' to the user's groups
+    user:
+      name: syslog
+      groups: adm
+      append: yes
+
+  - name: Edit dracut.conf for adding xen & kvm drivers
+    lineinfile: path=/opt/abhay/project/new_features/dracut.conf regexp='^add_drivers+=' line=add_drivers+='"xen-blkfront xen-netfront virtio_blk virtio_scsi virtio_net virtio_pci virtio_ring virtio"'
+
+#  - name: Loading drivers
+#    shell: dracut -f
+
+  - name: Checking drivers for xen
+    shell: lsinitrd /boot/initramfs-`uname -r`.img | grep xen | wc -l
+    register: v_xen
+
+  - name: Checking drivers for kvm
+    shell: lsinitrd /boot/initramfs-`uname -r`.img | grep virtio | wc -l
+    register: v_virtio
+
+  - name: End play if condition not matched
+    debug: msg="Exit from playbook as xen & kvm drivers not loaded"
+
+  - debug: var=v_xen
+  - debug: var=v_virtio
+
+  - meta: end_play
+    when: v_xen.stdout < "2" and v_virtio < "2"

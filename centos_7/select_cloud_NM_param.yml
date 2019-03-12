@@ -1,0 +1,24 @@
+---
+- hosts: all
+  remote_user: cloud
+  become: True
+  vars_files:
+    - "/opt/abhay/project/globalImageFactory/vars/var_stuff.yml"
+  tasks:
+  - name: Checking cloud-init version 
+    shell: rpm -q cloud-init
+    register: v_rpm_cloud
+
+  - name: Exit from playbook as cloud-init  is not installed
+    meta: end_play
+    when: v_rpm_cloud.rc!=0
+
+
+  - name: Run unmanaged_configuration.yml if cloud-init version is less 
+    include_tasks: unmanaged_configuration.yml
+    when: v_rpm_cloud.stdout[15]|int<9 
+
+  - name: Run unmanaged_configuration_for_nm.yml if cloud-init version is equal or greater then 9
+    include_tasks: unmanaged_configuration_for_nm.yml
+    when: v_rpm_cloud.stdout[15]|int >=9
+

@@ -1,1 +1,1 @@
-192.168.1.67	ansible_ssh_private_key_file=/opt/abhay/project/SLES_12_SP1/KeyPair-1c48_abhay_prod.pem
+90.84.41.221	ansible_ssh_private_key_file=/root/abhay/abhay_keys/KeyPair-f6e9.pem

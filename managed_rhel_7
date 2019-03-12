@@ -1,0 +1,212 @@
+---
+- hosts: all
+  remote_user: cloud
+  become: True
+  tasks:
+  - name: Changing value of PASS_MIN_DAYS in login.defs file
+    lineinfile:
+      dest: /etc/login.defs
+      regexp: '^PASS_MIN_DAYS\s+'
+      line: 'PASS_MIN_DAYS\t7'
+      backrefs: yes
+      backup: yes
+    ignore_errors: yes
+
+  - name: Changing value of PASS_MAX_DAYS in login.defs file
+    lineinfile:
+      dest: /etc/login.defs
+      regexp: '^PASS_MAX_DAYS\s+'
+      line: 'PASS_MAX_DAYS\t90'
+      backrefs: yes
+      backup: yes
+    ignore_errors: yes
+
+
+  - block:
+    - name: Changing value of X11Forwarding in sshd_config file
+      lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: '^X11Forwarding\s+'
+        line: 'X11Forwarding no'
+        backrefs: yes
+        backup: yes
+      ignore_errors: yes
+
+  - block:
+    - name: Changing value of PermitRootLogin in sshd_config file
+      lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: '^PermitRootLogin\s+'
+        line: 'PermitRootLogin no'
+        backrefs: yes
+        backup: yes
+      ignore_errors: yes
+
+  - name: Check setting for UMASK
+    shell: grep 'umask 077' /etc/profile
+    register: umask_profile
+    ignore_errors: yes
+
+  - name: Setting UMASK 077 in /etc/profile
+    replace:
+      dest: /etc/profile
+      regexp: '(\s\s)umask(\s+.*)'
+      replace: '  umask 077'
+      backup: yes
+    when: umask_profile.rc != 0
+    ignore_errors: yes
+
+  - name: Setting UMASK 077 in /etc/bashrc
+    replace:
+      dest: /etc/bashrc
+      regexp: '(\s\s)umask(\s+.*)'
+      replace: '  umask 077'
+      backup: yes
+    ignore_errors: yes
+
+  - name: Check core file entry exists or not in limits.conf
+    shell: cat /etc/security/limits.conf | grep '\*\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\ssoft\s\s\s\score'
+    register: result
+    ignore_errors: yes
+
+  - name: Update core file entries in /etc/security/limits.conf
+    blockinfile:
+      path: /etc/security/limits.conf
+      marker: ""
+      block: |
+        *                soft    core            0
+        *                hard    core            0
+    when: result.rc!=0
+    ignore_errors: yes
+
+  - name: Modify Permission of file /etc/crontab to 600
+    file:
+      path: /etc/crontab
+      mode: 0600
+    ignore_errors: yes
+
+  - name: Updated Ciphers in /etc/ssh/sshd_config file
+    lineinfile: dest=/etc/ssh/sshd_config insertafter='# Ciphers and keying' line='ciphers aes128-ctr,aes192-ctr,aes256-ctr'  backup=yes
+    ignore_errors: yes
+
+  - name: Setting ClientAliveCountMax in /etc/ssh/sshd_config
+    lineinfile: dest=/etc/ssh/sshd_config insertafter='#ClientAliveCountMax' line='ClientAliveCountMax 0' backup=yes
+    ignore_errors: yes
+
+  - name: Setting ClientAliveInterval in /etc/ssh/sshd_config
+    lineinfile: dest=/etc/ssh/sshd_config insertafter='#ClientAliveInterval' line='ClientAliveInterval 300' backup=yes
+    ignore_errors: yes
+
+  - name: Setting PermitUserEnvironment env
+    lineinfile: dest=/etc/ssh/sshd_config regexp='#PermitUserEnvironment no' line='PermitUserEnvironment no' backrefs=yes backup=yes
+    ignore_errors: yes
+
+  - name: Set INACTIVE=35 in /etc/default/useradd file
+    lineinfile: dest=/etc/default/useradd regexp='INACTIVE=(.*)' line='INACTIVE=35' backrefs=yes backup=yes
+    ignore_errors: yes
+
+  - name: Creating cron.allow
+    file:
+      path: /etc/cron.allow
+      state: touch
+      owner: root
+      group: root
+      mode: 0600
+    ignore_errors: yes
+
+  - name: Creating cron.deny
+    file:
+      path: /etc/cron.deny
+      state: touch
+      owner: root
+      group: root
+      mode: 0600
+    ignore_errors: yes
+
+
+  - name: Changing permission of /etc/cron.d
+    file:
+      path: /etc/cron.d
+      mode: 0700
+      owner: root
+      group: root
+    ignore_errors: yes
+
+  - name: Modify Permission of directory /etc/cron.daily
+    file:
+      path: /etc/cron.daily
+      mode: 0700
+      owner: root
+      group: root
+    ignore_errors: yes
+
+  - name: Modify Permission of directory /etc/cron.hourly
+    file:
+      path: /etc/cron.hourly
+      mode: 0700
+      owner: root
+      group: root
+    ignore_errors: yes
+
+  - name: Modify Permission of directory /etc/cron.weekly
+    file:
+      path: /etc/cron.weekly
+      mode: 0700
+      owner: root
+      group: root
+    ignore_errors: yes
+
+
+  - name: Modify Permission of directory /etc/cron.monthly
+    file:
+      path: /etc/cron.monthly
+      mode: 0700
+      owner: root
+      group: root
+    ignore_errors: yes
+
+  - name: Changing selinux value
+    selinux:
+      policy: targeted
+      state: enforcing
+    ignore_errors: yes
+
+  - name: Set Protocol 2 in /etc/ssh/sshd_config file
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      regexp: '#Protocol(.*)'
+      line: 'Protocol 2'
+      backrefs: yes
+      backup: yes
+    ignore_errors: yes
+
+  - name: Restarting sshd service
+    service: name=sshd state=restarted
+
+###################  VERIFICATION  #################################################33
+
+
+  - name: Verify Ciphers value in /etc/ssh/sshd_config file
+    shell: sshd -T | grep ciphers
+    register: out
+
+  - debug: msg="ciphers and keying value successfully set"
+    when: out.stdout == "ciphers aes128-ctr,aes192-ctr,aes256-ctr"
+
+  - debug: msg="ciphers and keying value NOT set"
+    when: out.stdout != "ciphers aes128-ctr,aes192-ctr,aes256-ctr"
+
+  - name: Checked in /etc/group file "cloud" user is already part of wheel group
+    shell: cat /etc/group|grep -iE "wheel" | grep "cloud"
+    ignore_errors: yes
+    register: userpresence
+
+  - name: Printing  message if cloud user is part of wheel
+    debug: msg="SUCCESS Cloud user is part of wheel"
+    ignore_errors: yes
+    when: userpresence.rc == 0
+
+  - name: Printing  message if cloud user is not part of wheel
+    debug: msg="FAILED Cloud user is not part of wheel"
+    ignore_errors: yes
+    when: userpresence.rc != 0

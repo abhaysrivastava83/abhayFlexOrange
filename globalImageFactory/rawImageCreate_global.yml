@@ -1,0 +1,31 @@
+---
+- hosts: localhost
+  vars_files:
+    - /opt/abhay/project/{{ instance_name }}/var_stuff.yml
+  tasks:
+  - name: Exporting variables for authentication in openstack
+    shell: source /opt/abhay/project/script.sh
+
+  - name: Listing images files
+    find:
+      paths: "/opt/abhay/project/{{ instance_name }}/images/"
+    register: found_file
+
+  - name: Checking image in FE private
+    shell: openstack image list --private | grep -i {{ image_name }}
+    register: found_raw_image
+    ignore_errors: true
+
+  - name: Creating cloud image from qcow2
+    shell: /bin/openstack --insecure  image create {{ image_name }} --disk-format qcow2  --private  --min-disk 40 --file "{{ found_file.files[0].path }}"
+    when: found_raw_image.rc !=0
+
+  - name: Sleeping for 1 min
+    shell: sleep 60
+
+  - name: Checking status of image
+    shell: openstack image show {{ image_name }}  | grep status
+    register: img_stat
+    until: img_stat.stdout[21:27].find("active") != -1
+    retries: 50
+    delay: 30

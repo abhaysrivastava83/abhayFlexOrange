@@ -1,0 +1,49 @@
+---
+- hosts: all
+  remote_user: cloud-user
+  become: yes
+  tasks:
+  - name: Make changes in /etc/cloud/cloud.cfg file for cloud user
+    replace: dest=/etc/cloud/cloud.cfg regexp=(\s)name:(\s+.*) replace=' name{{ ":" }} cloud' after='default_user'
+    ignore_errors: yes
+
+  - name: Clear history
+    shell: echo "">/root/.bash_history
+    ignore_errors: yes
+
+  - name: Clear auth files and logs for root
+    shell: echo "">/root/.ssh/authorized_keys
+    ignore_errors: yes
+
+  - name: Clear auth files and logs for non root
+    shell: echo "">/home/cloud/.ssh/authorized_keys
+    ignore_errors: yes
+
+  - name: Clear auth files and logs for centos
+    shell: echo "">/home/centos/.ssh/authorized_keys
+    ignore_errors: yes
+
+  - name: Delete /var/lib/cloud
+    file: path=/var/lib/cloud state=absent
+
+  - name: Clear /var/log/*
+    shell: rm -rf /var/log/*
+    ignore_errors: yes
+
+  - name: Clear history
+    shell: history -w;echo > /root/.bash_history;history-c;history -c;history -c
+    ignore_errors: yes
+
+  - name: Reboot remote system
+    shell: sleep 2 && /sbin/shutdown -r now "Ansible system package upgraded"
+    async: 1
+    poll: 0
+    ignore_errors: yes
+
+  - set_fact: wait_host="{{ ansible_host }}"
+    ignore_errors: yes
+  
+  - name: Waiting  for server to come back
+    local_action: wait_for host={{wait_host}} delay=10 port=22 state=started
+    become: false
+    ignore_errors: yes

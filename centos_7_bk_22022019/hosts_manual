@@ -1,0 +1,1 @@
+192.168.1.134  ansible_ssh_private_key_file=/root/abhay/abhay_keys/KeyPair-1c48_abhay_prod_west.pem

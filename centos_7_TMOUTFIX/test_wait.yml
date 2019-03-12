@@ -1,0 +1,12 @@
+---
+- hosts: localhost
+  tasks:
+  - name: Checking status of image
+    shell: openstack image show OBS_U_RHEL_7_5_ECS_test_abhay  | grep status 
+    register: img_stat
+    until: img_stat.stdout[21:27].find("active") != -1
+    retries: 30
+    delay: 30
+  
+  - name: Success message
+    shell: echo "success"

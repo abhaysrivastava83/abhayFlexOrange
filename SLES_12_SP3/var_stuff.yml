@@ -1,0 +1,3 @@
+instance_name: OBS_U_SLES12SP3_test
+image_name: OBS_U_SLES12SP3
+url_image: https://download.suse.com/sendredirect?target=https%3A%2F%2Fcdn.microfocus.com%2Fprot%2F7y5voB_aYwk%7E%2FSLES12-SP3-JeOS-for-kvm-and-xen.x86_64-GM.qcow2%3FiFxiUAmQ0Pz_qw7Y2aiSpGb0E0x_fKKlk1RSqrXWKFPyxgclUsmbLL47C6PZ_EuU-x8ahtXW-LQ3cgMgDgLxTDwewo6DltdP1PGw5UbxL6deaFivMddELxehUSXLoLfaQyVdMDG-a8lrHjzqveTO61lTNy6qsSPN2e5NeQtNzhU&buildid=7y5voB_aYwk~&fileid=vDlcb8zohig~&mirror=AkamaiHost&nohost=false&guid=undefined&ws=true

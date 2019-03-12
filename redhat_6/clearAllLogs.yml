@@ -1,0 +1,50 @@
+---
+- hosts: all
+  remote_user: cloud
+  become: True
+  tasks:
+#######################################################################333
+
+  - name: Deleting lines for cloud-user
+    lineinfile: 
+      dest: /etc/cloud/cloud.cfg
+      state: absent
+      regexp: 'runcmd:'
+
+  - name: Deleting lines for cloud-user
+    lineinfile: 
+      dest: /etc/cloud/cloud.cfg
+      state: absent
+      regexp: 'cloud-user'
+
+  - name:  Clear history
+    shell: echo "">/root/.bash_history
+    ignore_errors: yes
+  
+  - name:  Clear history
+    shell: echo "">/home/cloud/.bash_history
+    ignore_errors: yes
+
+  - name: Run history -c
+    shell: history -c
+    ignore_errors: yes
+
+  - name: Deleting /var/lib/cloud directory
+    shell: rm -rf /var/lib/cloud/*
+    ignore_errors: yes
+
+  - name: Clear auth files and logs for root
+    shell: echo "">/root/.ssh/authorized_keys
+    ignore_errors: yes
+
+  - name: Clear auth files and logs for non root
+    shell: echo "">/home/cloud/.ssh/authorized_keys
+    ignore_errors: yes
+
+  - name: Clear /var/log/*
+    shell: rm -rf /var/log/*
+    ignore_errors: yes
+
+  - name: Clear history
+    shell: history -w;echo > /root/.bash_history;history-c;history -c;history -c
+    ignore_errors: yes

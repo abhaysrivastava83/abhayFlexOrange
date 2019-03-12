@@ -1,0 +1,282 @@
+  - name: Setting variable for eth0
+    set_fact:
+      exclude_files: '/etc/sysconfig/network-scripts/ifcfg-eth0'
+
+  - name: Listing file which contain persistent and net
+    find:
+      paths: /etc/udev/rules.d/
+      patterns: "*persistent*,net"
+    register: file_to_delete
+  
+  - name:  Remove files which contain persistent and net
+    file:
+      path: "{{ item.path }}"
+      state: absent
+    with_items: "{{ file_to_delete.files }}"
+  
+  - name: Add  group "adm"
+    group:
+      name: adm
+      state: present
+  
+  - name: Add the user 'syslog' with a bash shell, appending the group 'adm' to the user's groups
+    user:
+      name: syslog
+      groups: adm
+      append: yes
+  
+  - name: Edit dracut.conf for adding xen & kvm drivers
+    lineinfile:
+      path: /etc/dracut.conf
+      insertafter: '^#add_drivers'
+      line: 'add_drivers+="xen-blkfront xen-netfront virtio_blk virtio_scsi virtio_net virtio_pci virtio_ring virtio"'
+  
+  - name: Loading drivers
+    shell: dracut -f
+  
+  - name: Checking drivers for xen
+    shell: lsinitrd /boot/initramfs-`uname -r`.img | grep xen | wc -l
+    register: v_xen
+  
+  - name: Checking drivers for kvm
+    shell: lsinitrd /boot/initramfs-`uname -r`.img | grep virtio | wc -l
+    register: v_virtio
+  
+  - name: Condition matching
+    debug: msg="Exit from playbook as xen & kvm drivers not loaded"
+    when: (v_xen.stdout < "2") or (v_virtio < "2")
+  
+  #  - meta: end_play
+  #    when: v_xen.stdout < "2" and v_virtio < "2"
+    
+  
+  - name: Configuration of /etc/ssh/sshd_config
+    replace:
+      path: /etc/ssh/sshd_config
+      regexp: '^PasswordAuthentication yes'
+      replace: 'PasswordAuthentication no'
+    ignore_errors: yes
+    
+  - name: Configuration of /etc/ssh/sshd_config
+    replace:
+      path: /etc/ssh/sshd_config
+      regexp: '^#PermitRootLogin yes'
+      replace: 'PermitRootLogin no'
+    ignore_errors: yes      
+
+  - name: Updaing cloud-init
+    yum: 
+      name: cloud-init
+      state: latest
+    
+  - name: Start cloud-init-local.service services
+    systemd:
+      name: "{{ item }}"
+      state: started
+    with_items:
+      - cloud-init-local.service
+      - cloud-init.service
+      - cloud-config.service
+      - cloud-final.service
+    ignore_errors: yes
+  
+  - name: Enable cloud-init-local.service services
+    systemd:
+      name: "{{ item }}"
+      enabled: yes
+    with_items:
+      - cloud-init-local.service
+      - cloud-init.service
+      - cloud-config.service
+      - cloud-final.service
+    ignore_errors: yes
+  
+  - name: Check bootcmd entry exists or not
+    shell: grep -A4  "bootcmd:" /etc/cloud/cloud.cfg
+    register: result
+    ignore_errors: yes
+  - debug: var=result.failed
+  
+  - name: Copy ec2metada
+    copy: src=./ec2metadata dest=/usr/bin/ec2metadata
+  
+  - name: Changing permission of /usr/bin/ec2metadata
+    file: path=/usr/bin/ec2metadata mode=0555
+    ignore_errors: yes
+  
+  - name: bootcmd entry in /etc/cloud/cloud.cfg
+    blockinfile:
+      path: /etc/cloud/cloud.cfg
+      marker: ""
+      block: |
+        bootcmd:
+          - localipv4=$(ec2metadata --local-ipv4 | awk '{print $2}')
+          - localhostname=$(ec2metadata --local-hostname | awk '{print $2}' |awk -F"."  '{print $1}')
+          - sed -i -e "s/%LOCALIPV4%/$localipv4/g" /etc/hosts
+          - sed -i -e "s/%LOCALHOSTNAME%/$localhostname/g" /etc/hosts
+        runcmd:
+        - userdel -r centos
+        network:
+          config: disabled
+    when: result.failed
+    ignore_errors: yes
+  
+  - name: disable_root entry in /etc/cloud/cloud.cfg
+    lineinfile: dest=/etc/cloud/cloud.cfg insertafter='^ - default' regexp="^disable_root" line='disable_root{{ ":" }} 1'
+    ignore_errors: yes
+  
+  - name: listing all files in /etc/sysconfig/network-scripts  all files to delete except eth0
+    shell: ls  /etc/sysconfig/network-scripts/ifcfg-eth*
+    register: capture
+  
+  - name: Removing now
+    file: path="{{ item }}" state=absent
+    with_items: "{{ capture.stdout_lines }}"
+    when: item not in exclude_files
+
+  - name: Install NetworkManager
+    yum: name=NetworkManager state=present
+    ignore_errors: yes
+  
+  - name: Start NetworkManager  services
+    systemd:
+      name: "{{ item }}"
+      state: started
+      enabled: yes
+    with_items:
+      - messagebus
+      - NetworkManager
+  
+  - name: Disable network service
+    shell: systemctl disable network
+  
+  - name: Delete cloud-init line from /etc/sysconfig/network-scripts/ifcfg-eth0
+    lineinfile: 
+      dest: /etc/sysconfig/network-scripts/ifcfg-eth0 
+      state: absent
+      regexp: 'cloud-init'
+  
+  - name: Insert data in /etc/sysconfig/network-scripts/ifcfg-eth0 for NM_CONTROLLED
+    shell: cat /etc/sysconfig/network-scripts/ifcfg-eth0
+    register: status
+  - debug: var=status.stdout.find('NM_CONTROLLED')
+    ignore_errors: yes
+   
+  - name: Changing value of NM_CONTROLLED
+    when: status.stdout.find('NM_CONTROLLED') != -1
+    lineinfile: path=/etc/sysconfig/network-scripts/ifcfg-eth0 regexp='^NM_CONTROLLED=' line='NM_CONTROLLED="yes"' 
+    ignore_errors: yes
+    
+  - name: Inserting line for NM_CONTROLLED
+    when: status.stdout.find('NM_CONTROLLED') == -1
+    lineinfile: dest=/etc/sysconfig/network-scripts/ifcfg-eth0 line='NM_CONTROLLED="yes"'
+    ignore_errors: yes
+  
+  - name: Make configuration in /etc/sysconfig/network-scripts/ifcfg-eth0
+    lineinfile: path=/etc/sysconfig/network-scripts/ifcfg-eth0 regexp='^BOOTPROTO=' line='BOOTPROTO=dhcp' 
+  
+  - name: Make configuration in /etc/sysconfig/network-scripts/ifcfg-eth0
+    lineinfile: path=/etc/sysconfig/network-scripts/ifcfg-eth0 regexp='^ONBOOT=' line='ONBOOT=yes' 
+  
+  - name: Making entry in /etc/hosts
+    shell: echo "%LOCALIPV4%  %LOCALHOSTNAME%" >> /etc/hosts
+
+  - name: Insert data in /etc/sysconfig/network for NOZEROCONF
+    shell: cat /etc/sysconfig/network
+    register: status_V
+  - debug: var=status_V.stdout.find('NOZEROCONF')
+    ignore_errors: yes
+
+  - name: Changing value of NOZEROCONF
+    when: status_V.stdout.find('NOZEROCONF') != -1
+    lineinfile: path=/etc/sysconfig/network regexp='^NOZEROCONF=' line='NOZEROCONF=yes'
+    ignore_errors: yes
+
+  - name: Inserting line for NOZEROCONF
+    when: status_V.stdout.find('NOZEROCONF') == -1
+    lineinfile: dest=/etc/sysconfig/network line='NOZEROCONF=yes'
+    ignore_errors: yes
+
+  - name: datasource entry in /etc/cloud/cloud.cfg  
+    blockinfile:  
+      path: /etc/cloud/cloud.cfg
+      marker: ""  
+      block: |
+        datasource_list: [ OpenStack ]    
+        datasource:
+          OpenStack:
+          metadata_urls: ['http:169.254.169.254']
+          max_wait: 120
+          timeout: 50  
+    ignore_errors: yes
+
+  
+  - name: Clear history
+    shell: echo "">/root/.bash_history
+    ignore_errors: yes
+  
+  - name: Check cloud service
+    shell: cloud-init init --local
+    register: cloud_status
+    ignore_errors: yes
+  
+  - name: Clear cloud init record
+    shell: rm -rf /var/lib/cloud/*
+    when: cloud_status.rc == 0
+    ignore_errors: yes
+  
+  - name: Clear auth files and logs for root
+    shell: echo "">/root/.ssh/authorized_keys
+    when: cloud_status.rc == 0
+    ignore_errors: yes
+  
+  - name: Clear auth files and logs for non root
+    shell: echo "">/home/cloud/.ssh/authorized_keys
+    when: cloud_status.rc == 0
+    ignore_errors: yes
+  
+  - name: Clear key files
+    shell: shred -u /etc/ssh/*_key /etc/ssh/*_key.pub
+    ignore_errors: yes
+  
+  - name: Clear history secure way
+    shell: shred -u ~/.*history
+    ignore_errors: yes
+  
+  - name: Clear /var/log/*
+    shell: rm -rf /var/log/*
+    when: cloud_status.rc == 0
+    ignore_errors: yes
+  
+  - name: Clear history
+    shell: history -w;echo > /root/.bash_history;history-c;history -c;history -c
+    when: cloud_status.rc == 0
+    ignore_errors: yes
+  
+  - name: Prining error message
+    debug: msg="Please check cloud-init service, it seems not running"
+    when: cloud_status.rc != 0
+  
+  - name: listing /opt/abhay/project/centos_7/images folder
+    shell: ls -1 /opt/abhay/project/centos_7/images
+    register: contents
+    delegate_to: localhost
+  
+  - name: Empting images folder 
+    file: path=/opt/abhay/project/centos_7/images/{{ item }} state=absent
+    with_items:  "{{ contents.stdout_lines }}"
+    delegate_to: localhost
+
+  - name: Reboot remote system
+    shell: sleep 2 && /sbin/shutdown -r now "Ansible system package upgraded"
+    async: 1
+    poll: 0
+    ignore_errors: yes
+
+  - set_fact: wait_host="{{ ansible_host }}"
+    ignore_errors: yes
+
+  - name: Waiting  for server to come back
+    local_action: wait_for host={{wait_host}} delay=10 port=22 state=started
+    become: false
+    ignore_errors: yes

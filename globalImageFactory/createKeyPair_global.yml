@@ -1,0 +1,18 @@
+---
+- hosts: localhost
+  vars_files:
+    - var_stuff.yml
+  tasks:
+
+  - name: Check KeyPair already created or not
+    stat:
+      path: /opt/abhay/project/centos_7_micro/mykey-$instance_name.pem
+    register: stat_key_found
+
+  - name: Create keypair
+    shell: openstack keypair create mykey-$instance_name > /opt/abhay/project/centos_7_micro/mykey-$instance_name.pem
+    when: stat_key_found.stat.exists == false
+
+  - name: Changing key file permission
+    shell: chmod 600 /opt/abhay/project/centos_7_micro/mykey-$instance_name.pem
+

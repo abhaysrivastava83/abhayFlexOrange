@@ -1,0 +1,16 @@
+---
+- hosts: localhost
+#  vars_files:
+#    - var_stuff.yml
+  vars:
+#    image_name: centos_abhay_test5 
+    instance_name: ecs-653c
+  tasks:
+  - name: Checking status of image
+    shell: openstack server  show {{ instance_name }}  | grep power_state | awk -F "|" '{print $3}'
+    register: ins_stat
+    until: ins_stat.stdout[1:8].find("Running") != -1
+    retries: 50
+    delay: 30
+  - debug: var=ins_stat.stdout[1:8] 
+

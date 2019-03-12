@@ -1,0 +1,34 @@
+---
+- hosts: localhost
+  remote_user: cloud
+  become: yes
+  tasks:
+  - name: Insert data in /etc/sysconfig/network for NOZEROCONF
+    shell: cat /etc/sysconfig/network
+    register: status_V
+  - debug: var=status_V.stdout.find('NOZEROCONF')
+    ignore_errors: yes
+
+  - name: Changing value of NOZEROCONF
+    when: status_V.stdout.find('NOZEROCONF') != -1
+    lineinfile: path=/etc/sysconfig/network regexp='^NOZEROCONF=' line='NOZEROCONF=yes'
+    ignore_errors: yes
+
+  - name: Inserting line for NOZEROCONF
+    when: status_V.stdout.find('NOZEROCONF') == -1
+    lineinfile: dest=/etc/sysconfig/network line='NOZEROCONF=yes'
+    ignore_errors: yes
+
+  - name: datasource entry in /etc/cloud/cloud.cfg  
+    blockinfile:  
+      path: /etc/cloud/cloud.cfg
+      marker: ""  
+      block: |
+        datasource_list: [ OpenStack ]    
+        datasource:
+          OpenStack:
+          metadata_urls: ['http:169.254.169.254']
+          max_wait: 120
+          timeout: 50  
+    ignore_errors: yes
+

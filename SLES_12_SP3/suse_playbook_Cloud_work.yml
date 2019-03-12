@@ -1,0 +1,114 @@
+---
+- hosts: all
+  remote_user: root
+  
+  tasks:
+#    - name: Register server with Suse repo
+#      shell: SUSEConnect -r E157BD380D4BD8 -e abhaysrivastava83@gmail.com
+    
+    - name: Add repo1 for cloud
+      shell: zypper addrepo https://download.opensuse.org/repositories/Cloud:Tools/SLE_12_SP3/Cloud:Tools.repo 
+      ignore_errors: Yes
+      
+    - name: Add repo2 for cloud
+      shell: zypper addrepo http://download.opensuse.org/repositories/home:/garloff:/OTC:/cloudinit/SLE_12/home:garloff:OTC:cloudinit.repo
+      ignore_errors: Yes
+
+    - name: Add repo3 for cloud
+      shell: zypper addrepo http://download.opensuse.org/repositories/Cloud:/Tools/SLE_12_SP1/Cloud:Tools.repo
+      ignore_errors: Yes
+
+    - name: Add repo4 for cloud
+      shell: zypper addrepo http://download.opensuse.org/distribution/leap/42.3/repo/non-oss/ non-oss
+      ignore_errors: Yes
+
+    - name: Add repo5 for cloud
+      shell: zypper addrepo http://download.opensuse.org/distribution/leap/42.3/repo/oss/ oss 
+      ignore_errors: Yes
+    
+    - name: Refresh all repos
+      shell: zypper --gpg-auto-import-keys refresh
+    
+    - name: Installing cloud-init package
+      zypper: name=cloud-init state=present force=yes
+      register: var_cloudinit
+    
+    - name: Make changes in /etc/cloud/cloud.cfg file
+      replace: dest=/etc/cloud/cloud.cfg regexp=(\s)name:(\s+.*) replace=' name{{ ":" }} cloud' after='default_user'
+      when: var_cloudinit.rc == 0
+      ignore_errors: Yes
+    
+    - name: Adding adm group
+      group: name=adm state=present
+      when: var_cloudinit.rc == 0
+      ignore_errors: Yes
+    
+    - name: Adding syslog user
+      user: name=syslog group=adm shell=/bin/sh
+      when: var_cloudinit.rc == 0
+      ignore_errors: Yes
+    
+    - name:  Clean /var/log/cloud-init*
+      shell: rm -rf /var/log/cloud-init*
+      when: var_cloudinit.rc == 0
+      ignore_errors: Yes
+    
+    - name: Clean /var/lib/cloud/*
+      shell: rm -rf /var/lib/cloud/*
+      when: var_cloudinit.rc == 0
+      ignore_errors: Yes
+    
+    - name: /var/log/network-config.log
+      shell: rm -rf /var/log/network-config.log
+      when: var_cloudinit.rc == 0
+      ignore_errors: Yes
+
+    - name: Restart and enable cloud-init service 
+      systemd:
+        name: "{{ item }}"
+        state: started
+      when: var_cloudinit.rc == 0        
+      with_items:
+        - cloud-init-local.service
+        - cloud-init.service
+        - cloud-config.service
+        - cloud-final.service
+      ignore_errors: yes
+
+    - name: Enable cloud-init-local.service services
+      systemd:
+        name: "{{ item }}"
+        enabled: yes
+      when: var_cloudinit.rc == 0        
+      with_items:
+        - cloud-init-local.service
+        - cloud-init.service
+        - cloud-config.service
+        - cloud-final.service
+      ignore_errors: yes
+
+    - name: Make chages in boot.local file to start cloud-init service on boot
+      lineinfile: dest=/etc/init.d/boot.local line='systemctl start cloud-init-local cloud-init cloud-config cloud-final'
+      when: var_cloudinit.rc == 0
+      ignore_errors: yes
+
+    - name: Reboot remote system"
+      shell: sleep 2 && /sbin/shutdown -r now "Ansible system package upgraded"
+      async: 1
+      poll: 0
+    - set_fact: wait_host="{{ ansible_host }}"
+    - name: Waiting  for server to come back
+      local_action: wait_for host={{wait_host}} delay=10 port=22 state=started
+      become: false
+
+    - name: Truncate /root/.ssh/known_hosts
+      shell: 'echo "" > /root/.ssh/known_hosts'
+      delegate_to: localhost
+      ignore_errors: yes
+
+
+    - name: Truncate /home/cloud/.ssh/known_hosts
+      shell: 'echo "" > /home/cloud/.ssh/known_hosts'
+      delegate_to: localhost
+      ignore_errors: yes
+    

@@ -30,5 +30,5 @@
     ignore_errors: yes
 
   - name: Clear history
-    shell: history -w;echo > /root/.bash_history;history-c;history -c;history -c
+    shell: history -w;echo > /root/.bash_history;history -c;history -c;history -c
     ignore_errors: yes

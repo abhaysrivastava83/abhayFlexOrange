@@ -1,0 +1,8 @@
+#!/bin/bash
+echo "Please Enter First Digit: "
+read num1
+echo "Please Enter Second Digit: "
+read num2
+Sum=`expr $num1 + $num2`
+echo "The addition value is  $Sum"
+

@@ -1,0 +1,3 @@
+instance_name: abhay_centos_micro
+image_name: abhay_centos_micro
+url_image: https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1809.qcow2

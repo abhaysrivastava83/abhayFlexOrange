@@ -1,0 +1,22 @@
+#!/bin/bash
+echo "Please enter first value"
+read x
+echo "Please Enter Second Value"
+read y
+echo "Enter [1] for Addition [2] for Subtraction [3] for Multiply [4] for Division"
+read z
+if [ $z -eq 1 ]
+then
+echo `expr $x + $y`
+elif [ $z -eq 2 ]
+then
+echo `expr $x - $y`
+elif [ $z -eq 3 ]
+then
+echo `expr $x \* $y`
+elif [ $z -eq 4 ]
+then
+echo `expr $x / $y`
+else 
+echo "Invalid Input"
+fi 

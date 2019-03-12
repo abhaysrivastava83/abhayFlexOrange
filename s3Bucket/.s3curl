@@ -1,0 +1,8 @@
+%awsSecretAccessKeys = (
+    # personal account
+    obsabhay => {                                                   
+        id =>'DBWRJ4WP9AUOSXOR8JLP',           
+        key =>'WUa6UJOIMOVAt3EihfvJw3KVkEu1VwNl9rC1fxrP',   
+    },
+);
+

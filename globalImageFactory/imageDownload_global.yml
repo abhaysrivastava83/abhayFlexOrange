@@ -1,0 +1,21 @@
+---
+- hosts: localhost
+  vars_files:
+    - /opt/abhay/project/{{ instance_name }}/var_stuff.yml
+  tasks:
+
+  - name: Creating directory for image download
+    file:
+      path: "/opt/abhay/project/{{ instance_name }}/images"
+      state: directory
+
+  - name: Listing images files
+    find:
+      paths: "/opt/abhay/project/{{ instance_name }}/images"
+      patterns: "*.qcow2"
+    register: found_image
+
+  - name: Downloading  OS image  qcow2
+    get_url: url="{{ url_image }}"  dest=/opt/abhay/project/{{ instance_name }}/images
+    when: found_image.matched|int == 0
+

@@ -1,0 +1,11 @@
+export OS_AUTH_URL=https://iam.eu-west-0.prod-cloud-ocb.orange-business.com/v3
+export OS_PROJECT_ID=81f369b80f664ed283540062135a7a41
+export OS_USER_DOMAIN_ID=c9f1d27bef8041dbafe721a8d25b3d28
+export OS_USERNAME=abhay.srivastava
+export OS_PASSWORD=appu@orange
+export OS_IDENTITY_API_VERSION=3
+export OS_IMAGE_API_VERSION=2
+export OS_NETWORK_API_VERSION=2
+export OS_REGION_NAME="eu-west-0"
+export OS_DOMAIN_NAME=OCB0001659
+export OS_TENANT_NAME="eu-west-0"

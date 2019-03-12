@@ -1,0 +1,46 @@
+---
+- hosts: all
+  remote_user: cloud
+  become: True
+  tasks:
+  
+  - name:  Clear root user history
+    shell: echo "">/root/.bash_history
+    ignore_errors: yes
+  
+  - name:  Clear cloud user history
+    shell: echo "">/home/cloud/.bash_history
+    ignore_errors: yes
+
+  - name: Deleting /var/lib/cloud directory
+    shell: rm -rf /var/lib/cloud/*
+    ignore_errors: yes
+
+  - name: Clear auth files and logs for root
+    shell: echo "">/root/.ssh/authorized_keys
+    ignore_errors: yes
+
+  - name: Clear auth files and logs for non root
+    shell: echo "">/home/cloud/.ssh/authorized_keys
+    ignore_errors: yes
+
+  - name: Clear /var/log/*
+    shell: find /var/log/ -mindepth 1 -not -name 'apache2' -not -name 'mysql' -not -name 'nginx' -prune -exec rm -r "{}" \;
+    ignore_errors: yes
+
+  - name: Clean apache2 directory
+    shell: /bin/rm -rf /var/log/apache2/*
+
+  - name: Clean mysql directory 
+    shell: /bin/rm -rf /var/log/mysql/*
+
+  - name: Clean nginx directory
+    shell: /bin/rm -rf /var/log/nginx/*
+
+  - name: Clear history
+    shell: history -w;history -c;history -c;history -c
+    ignore_errors: yes
+
+  - name: Clear history again
+    shell: history -c
+    ignore_errors: yes
